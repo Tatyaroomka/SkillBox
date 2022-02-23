@@ -1,0 +1,159 @@
+                    ---Домашнее задание. дЕНЬ 2
+                    
+----- Задача 1
+-- Посчитайте общую сумму продаж в США в 1 квартале 2012 года? Решить 2-мя  способами Джойнами и Подзапросами 
+--Вариант 1 
+SELECT *
+  FROM sales_items;
+
+SELECT *
+  FROM sales;
+
+
+
+   SELECT Sum(UnitPrice) 
+  FROM sales_items AS it,
+       sales AS sal
+ WHERE it.SalesId = sal.SalesId AND 
+       ShipCountry = 'USA' AND 
+       strftime('%m', SalesDate) IN ('01', '02', '03') AND 
+       strftime('%Y', SalesDate) = '2012';
+
+
+--Вариант 2
+   Select Sum (UnitPrice)   from sales_items as it
+   where salesid in (select
+                       sal.SalesId
+                       from
+                       sales as sal
+                       Where  ShipCountry = 'USA'
+                       and strftime ('%m',SalesDate ) in ('01','02','03')
+                       and strftime ('%Y',SalesDate ) = '2012'
+   );
+
+   
+   
+
+select * from sales_items;  
+
+----- Задача 2   Покажите имена клиентов, которых нет среди работников. Решить 3-мя способами: подзапросами, джойнами и логическим вычитанием.
+--Вариант 1
+    SELECT C.FirstName,
+       C.LastName
+  FROM customers C
+       LEFT JOIN
+       employees E ON C.FirstName = E.FirstName AND 
+                      C.LastName = E.LastName AND 
+                      EmployeeId IS NULL;
+
+
+ --Вариант2
+    SELECT *
+  FROM customers C
+ WHERE NOT EXISTS (
+               SELECT e.FirstName
+                 FROM employees e
+                WHERE C.FirstName = E.FirstName AND 
+                      C.LastName = E.LastName
+           );
+
+     
+--Вариант3
+   SELECT C.FirstName, C.LastName FROM customers C
+     EXCEPT
+   SELECT e.FirstName, e.LastName FROM employees e;
+
+
+
+
+----- Задача 3 Теоретический вопрос
+	--Вернет ли данный запрос  одинаковый результат?  Да или НЕТ. 
+	--Если  ДА. Объяснить почему.
+	--Если НЕТ. Объяснить почему. Какой  запрос вернет больше строк ?
+
+--1
+select *
+ 	from T1 LEFT JOIN T2
+		ON T1.column1=T2.column1
+	 where   T1.column1=0;
+  
+
+ 	
+--2
+	 select *
+	 from T1 LEFT JOIN T2
+		ON T1.column1=T2.column1 and   T1.column1=0;
+  
+-- Запросы вернут разное количество строк. Т.К. в первой выборке сначала соеденяются таблицы, после чего накладывается условие фильтрации.
+-- Во втором же запросе условие T1.column1=0 включино в объеденение таблиц, а т.к. это left join все равно будут выбраны все строки из левой таблицы (t1) 
+-- не зависимо от истоности условия. Следовательно второй запрос вернет больше строк.
+
+
+----- Задача 4  Посчитайте количество треков в каждом альбоме. В результате должно быть:  имя альбома и кол-во треков.
+                --Решить  2-мя способами: подзапросом и джойнами
+--Вариант 1
+   SELECT title, count(name) FROM tracks f, albums A
+    WHERE f.AlbumId = A.AlbumId
+     GROUP BY a.AlbumId;
+
+--Вариант 2
+    select  count (name), AlbumId, (Select title from albums A where f.AlbumId= A.AlbumId) Name   from tracks f
+    group by  f.AlbumId ;
+
+----- Задача 5  Покажите фамилию и имя покупателей немцев сделавших заказы в 2009 году, товары которых были отгружены в город Берлин?
+
+   Select FirstName, LastName from customers C, sales S
+   where C. CustomerId = S.CustomerId
+   and  Country = 'Germany'
+   and  strftime ('%Y',SalesDate ) = '2009'
+   and ShipCity = 'Berlin';
+   
+
+----- Задача 6  Покажите фамилии  клиентов которые  купили больше 30 музыкальных треков ?
+	--Решить  задачу ,как минимум, 2-мя способами: джойнами и подзапросами
+--Вариант  1
+  SELECT LastName
+  FROM customers C,
+       sales_items S,
+       sales sales
+ WHERE c.CustomerId = sales.CustomerId AND 
+       sales.SalesId = s.SalesId
+ GROUP BY sales.CustomerId
+HAVING count(s.TrackId) > 30;
+
+    
+--Вариант 2
+ 
+  SELECT CustomerId,
+       FirstName,
+       LastName,
+       (
+           SELECT count(DISTINCT TrackId) 
+             FROM sales_items AS sl
+            WHERE sl.SalesId IN (
+                      SELECT SalesId
+                        FROM sales AS s
+                       WHERE s.CustomerId = c.CustomerId
+                  )
+       )
+       AS count_sales
+  FROM customers C
+ WHERE count_sales > 30;
+
+
+
+
+
+----- Задача 7   В базе есть таблица музыкальных треков и жанров Назовите среднюю стоимстость музыкального трека в каждом жанре?
+Select Round(Avg (UnitPrice),2), g.Name from tracks t, genres g
+where t.GenreId = g.GenreId
+Group by g.GenreId;
+
+
+----- Задача 8   В базе есть таблица музыкальных треков и жанров. Покажите жанры у которых средняя стоимость одного трека больше 1-го рубля
+
+Select Round(Avg (UnitPrice),2) avg_cost, g.Name from tracks t, genres g
+where t.GenreId = g.GenreId
+Group by g.GenreId
+having Round(Avg (UnitPrice),2)> 1;
+
